@@ -9,7 +9,7 @@ import subprocess, tempfile
 import networkx as nx
 from operator import itemgetter
 import multiprocessing as mp
-
+from sweep import paramSweep
 
 
 def score(value, mu, musquared):
@@ -1290,6 +1290,8 @@ def main():
         'containing the interactome edges. Should be a tab delimited file with 3 or 4 columns: '\
         '"ProteinA\tProteinB\tWeight(between 0 and 1)\tDirectionality(U or D, optional)"')
     #optional arguments
+    parser.add_argument("--sweep", action="store_true", help='Enable a user specified parameter sweep.' \
+                        'Must format config file accordingly.', default=False)
     parser.add_argument("-c", "--conf", dest='confFile', help='Path to the text file containing '\
         'the parameters. Should be several lines that looks like: "ParameterName = '\
         'ParameterValue". Must contain values for w, b, D.  May contain values for optional '\
@@ -1365,48 +1367,51 @@ def main():
         sys.exit('ERROR: The msgsteiner code was not found in the correct directory. '\
                  'Please use --msgpath to specify the path to the msgsteiner code.')
 
-    #Process input, run msgsteiner, create output object, and write out results
-    inputObj = PCSFInput(options.prizeFile,options.edgeFile, options.confFile, options.dummyMode,
-                         options.knockout, options.garnet, options.shuffleNum,
-                         options.musquared, options.excludeT)
-    (edgeList, info) = inputObj.runPCSF(options.msgpath, options.seed)
-    outputObj = PCSFOutput(inputObj,edgeList,info,options.outputpath,options.outputlabel,1)
-    outputObj.writeCytoFiles(options.outputpath, options.outputlabel, options.cyto30)
-    
-    #Get merged results of adding noise to edge values
-    if options.noiseNum > 0:
-        merged = changeValuesAndMergeResults(noiseEdges, options.seed, inputObj, 
-                                             options.noiseNum, options.msgpath, 
-                                             options.outputpath, options.outputlabel,
-                                             options.excludeT)
-        merged.writeCytoFiles(options.outputpath, options.outputlabel+'_noisy', options.cyto30)
-    
-    #Get merged results of shuffling prizes
-    if options.shuffleNum > 0:
-        merged = changeValuesAndMergeResults(shufflePrizes, options.seed, inputObj, 
-                                             options.shuffleNum, options.msgpath, 
-                                             options.outputpath, options.outputlabel,
-                                             options.excludeT)
-        merged.writeCytoFiles(options.outputpath, options.outputlabel+'_shuffled', options.cyto30)
+    if options.sweep == True:
+        paramSweep(options)
+    else:
+        #Process input, run msgsteiner, create output object, and write out results
+        inputObj = PCSFInput(options.prizeFile,options.edgeFile, options.confFile, options.dummyMode,
+                             options.knockout, options.garnet, options.shuffleNum,
+                             options.musquared, options.excludeT)
+        (edgeList, info) = inputObj.runPCSF(options.msgpath, options.seed)
+        outputObj = PCSFOutput(inputObj,edgeList,info,options.outputpath,options.outputlabel,1)
+        outputObj.writeCytoFiles(options.outputpath, options.outputlabel, options.cyto30)
 
-    #Get merged results of randomizing terminals
-    if options.termNum > 0:
-        merged = changeValuesAndMergeResults(randomTerminals,options.seed, inputObj,
-                                             options.termNum, options.msgpath,
-                                             options.outputpath, options.outputlabel,
-                                             options.excludeT)
-        merged.writeCytoFiles(options.outputpath, options.outputlabel+'_randomTerminals', 
-                              options.cyto30)
-    
-    #If k is supplied, run k-fold cross validation
-    if options.cv != None:
-        if options.cv_reps == None:
-            crossValidation(options.cv, 1, inputObj, options.seed, options.msgpath, \
-                            options.outputpath, options.outputlabel)
-        else:
-            for i in range(0,options.cv_reps):
-                crossValidation(options.cv, i+1, inputObj, options.seed, options.msgpath, \
-                            options.outputpath, options.outputlabel)
+        #Get merged results of adding noise to edge values
+        if options.noiseNum > 0:
+            merged = changeValuesAndMergeResults(noiseEdges, options.seed, inputObj, 
+                                                 options.noiseNum, options.msgpath, 
+                                                 options.outputpath, options.outputlabel,
+                                                 options.excludeT)
+            merged.writeCytoFiles(options.outputpath, options.outputlabel+'_noisy', options.cyto30)
+
+        #Get merged results of shuffling prizes
+        if options.shuffleNum > 0:
+            merged = changeValuesAndMergeResults(shufflePrizes, options.seed, inputObj, 
+                                                 options.shuffleNum, options.msgpath, 
+                                                 options.outputpath, options.outputlabel,
+                                                 options.excludeT)
+            merged.writeCytoFiles(options.outputpath, options.outputlabel+'_shuffled', options.cyto30)
+
+        #Get merged results of randomizing terminals
+        if options.termNum > 0:
+            merged = changeValuesAndMergeResults(randomTerminals,options.seed, inputObj,
+                                                 options.termNum, options.msgpath,
+                                                 options.outputpath, options.outputlabel,
+                                                 options.excludeT)
+            merged.writeCytoFiles(options.outputpath, options.outputlabel+'_randomTerminals', 
+                                  options.cyto30)
+
+        #If k is supplied, run k-fold cross validation
+        if options.cv != None:
+            if options.cv_reps == None:
+                crossValidation(options.cv, 1, inputObj, options.seed, options.msgpath, \
+                                options.outputpath, options.outputlabel)
+            else:
+                for i in range(0,options.cv_reps):
+                    crossValidation(options.cv, i+1, inputObj, options.seed, options.msgpath, \
+                                    options.outputpath, options.outputlabel)
     
 if __name__ == '__main__':
     main()
