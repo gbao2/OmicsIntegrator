@@ -1292,6 +1292,8 @@ def main():
     #optional arguments
     parser.add_argument("--sweep", action="store_true", help='Enable a user specified parameter sweep.' \
                         'Must format config file accordingly.', default=False)
+    parser.add_argument("--sweep-attribute", dest='toSweepOn', help='Attribute to sort Steiner Forests. Check Readme for full list.', 
+                        default=None)
     parser.add_argument("-c", "--conf", dest='confFile', help='Path to the text file containing '\
         'the parameters. Should be several lines that looks like: "ParameterName = '\
         'ParameterValue". Must contain values for w, b, D.  May contain values for optional '\

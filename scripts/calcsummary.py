@@ -1,3 +1,0 @@
-'''
-Calculate forest summary topologies
-'''

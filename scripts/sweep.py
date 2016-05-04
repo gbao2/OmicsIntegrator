@@ -1,7 +1,7 @@
 '''
 parameter sweep
 '''
-import re, sys, os, calcsummary
+import re, sys, os, CalcSummary
 import numpy as np
 
 def paramSweep(options):
@@ -38,7 +38,9 @@ def paramSweep(options):
     w_range = np.arange(vals['w'][0], vals['w'][1], vals['w'][2])
     b_range = np.arange(vals['b'][0], vals['b'][1], vals['b'][2])
     D_range = np.arange(vals['D'][0], vals['D'][1], vals['D'][2])
-
+    
+    sumFile = open(options.outputpath + "/summary_statistics", w+)
+    sumList = []
     for w in w_range:
         for b in b_range:
             for D in D_range:
@@ -53,4 +55,30 @@ def paramSweep(options):
                     confFile.write('D = {}\n'.format(D))
                     
                 os.system("python forest.py --prize %s --edge %s --conf %s --msgpath %s --outpath %s" %(options.prizeFile,options.edgeFile, conf_path, options.msgpath, abs_path))
+                
+                sumListEntry = []
+                sumListEntry.append(w)
+                sumListEntry.append(b)
+                sumListEntry.append(D)
+                
+                summaryObject = CalcSummary(abs_path, options.outputlabel, options.toSweepOn)
+                sumListEntry.append(summaryObject.getSummary())
+
+                sumList.append(sumListEntry)
+
+    finalSumObject = SortSum(sumList, options.toSweepOn)
+    toPrintList = finalSumObject.getSumList()
+
+    sumFile.write('w\tb\tD\t{}\n'.format(toSweepOn))
+    for item in toPrintList:
+        for x in range(len(item) - 1):
+            sumFile.write(item[x] + '\t')
+        sumFile.write(item[len(item) - 1] + '\n')
+    
+    sumFile.close()
+    
+                
+                
+                
+                
                  
