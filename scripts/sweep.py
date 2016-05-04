@@ -1,7 +1,7 @@
 '''
 parameter sweep
 '''
-import re, sys, os, CalcSummary
+import re, sys, os, CalcSummary, SortSum
 import numpy as np
 
 def paramSweep(options):
