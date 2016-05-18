@@ -1,7 +1,7 @@
 '''
 parameter sweep
 '''
-import re, sys, os, CalcSummary, SortSum
+import re, sys, os, CalcSummary, SortSum, argparse
 import numpy as np
 
 def paramSweep(options):
@@ -61,15 +61,15 @@ def paramSweep(options):
                 sumListEntry.append(b)
                 sumListEntry.append(D)
                 
-                summaryObject = CalcSummary(abs_path, options.outputlabel, options.toSweepOn)
+                summaryObject = CalcSummary(abs_path, options.outputlabel, options.sweep)
                 sumListEntry.append(summaryObject.getSummary())
 
                 sumList.append(sumListEntry)
 
-    finalSumObject = SortSum(sumList, options.toSweepOn)
+    finalSumObject = SortSum(sumList, options.sweep)
     toPrintList = finalSumObject.getSumList()
 
-    sumFile.write('w\tb\tD\t{}\n'.format(toSweepOn))
+    sumFile.write('w\tb\tD\t{}\n'.format(options.sweep))
     for item in toPrintList:
         for x in range(len(item) - 1):
             sumFile.write(item[x] + '\t')
@@ -77,8 +77,63 @@ def paramSweep(options):
     
     sumFile.close()
     
-                
-                
-                
-                
-                 
+def justSum(options):
+    
+    runs = [x[0] for x in os.walk(options.outputpath)]
+    sumList = []
+    params = []
+    first = True 
+    for run in runs:
+        sumListEntry = []        
+        with os.join(run, options.confFile) as conf:                        
+            for line in conf:
+                ln = line.split()
+                sumListEntry.append(float(ln[2].rstrip()))
+                if first:
+                    params.append(ln[0])
+        summaryObject = CalcSummary(run, options.outputlabel, options.sweep)
+        sumListEntry.append(summaryObject.getSummary())
+        first = False
+
+    finalSumObject = SortSum(sumList, options.sweep)
+    toPrintList = finalSumObject.getSumList()
+
+    sumFile = open(options.outputpath + "/summary_statistics", w+)
+    sumFile.write('w\tb\tD\t{}\n'.format(options.sweep))
+    for item in toPrintList:
+        for x in range(len(item) - 1):
+            sumFile.write(item[x] + '\t')
+        sumFile.write(item[len(item) - 1] + '\n')
+    
+    sumFile.close()
+            
+            
+    
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Standalone sweep')
+    parser.add_argument("--sweep", dest='sweep', help='Attribute to sort Steiner Forests. Check Readme for full list.', 
+                        default=None)
+    parser.add_argument("-p", "--prize", dest='prizeFile', help='(Required) Path to the text file '\
+                        'containing the prizes. Should be a tab delimited file with lines: "ProteinName'\
+                        '\tPrizeValue"')
+    parser.add_argument("-e", "--edge", dest='edgeFile', help ='(Required) Path to the text file '\
+                        'containing the interactome edges. Should be a tab delimited file with 3 or 4 columns: '\
+                        '"ProteinA\tProteinB\tWeight(between 0 and 1)\tDirectionality(U or D, optional)"')
+    parser.add_argument("--msgpath", dest='msgpath',  help='Full path to the message passing code. '\
+                        'Default = "<current directory>/msgsteiner"', default='./msgsteiner')
+    parser.add_argument("--outpath", dest = 'outputpath', help='Path to the directory which '\
+                        'holds the output files. Default = this directory', default='.')
+    parser.add_argument("--outlabel", dest = 'outputlabel', help='A string put at the beginning '\
+                        'of the names of files output by the program. Default = "result"', default='result')
+
+    parser.add_argument("-c", "--conf", dest='confFile', help='Path to the text file containing '\
+                        'the parameters. Should be several lines that looks like: "ParameterName = '\
+                        'ParameterValue". Must contain values for w, b, D.  May contain values for optional '\
+                        'parameters mu, n, r, g. Default = "./conf.txt"', default='conf.txt')
+    options = parser.parse_args()
+    if options.sweep == 'summarize':
+        justSum(options)
+    else:
+        paramSweep(options)
+    

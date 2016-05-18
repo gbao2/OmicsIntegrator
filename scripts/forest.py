@@ -1290,9 +1290,7 @@ def main():
         'containing the interactome edges. Should be a tab delimited file with 3 or 4 columns: '\
         '"ProteinA\tProteinB\tWeight(between 0 and 1)\tDirectionality(U or D, optional)"')
     #optional arguments
-    parser.add_argument("--sweep", action="store_true", help='Enable a user specified parameter sweep.' \
-                        'Must format config file accordingly.', default=False)
-    parser.add_argument("--sweep-attribute", dest='toSweepOn', help='Attribute to sort Steiner Forests. Check Readme for full list.', 
+    parser.add_argument("--sweep", dest='sweep', help='Attribute to sort Steiner Forests. Check Readme for full list.', 
                         default=None)
     parser.add_argument("-c", "--conf", dest='confFile', help='Path to the text file containing '\
         'the parameters. Should be several lines that looks like: "ParameterName = '\
@@ -1369,7 +1367,7 @@ def main():
         sys.exit('ERROR: The msgsteiner code was not found in the correct directory. '\
                  'Please use --msgpath to specify the path to the msgsteiner code.')
 
-    if options.sweep == True:
+    if options.sweep != None:
         paramSweep(options)
     else:
         #Process input, run msgsteiner, create output object, and write out results
