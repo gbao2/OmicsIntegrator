@@ -4,13 +4,17 @@ Omics Integrator
 
 Omics Integrator is a package designed to integrate gene expression data and/or
 proteomics data using the protein-protein interaction network. It is comprised
-of two modules, garnet and forest, that perform data integration of various
+of two modules, Garnet and Forest, that perform data integration of various
 types of data.
 
 Contact: Sara JC Gosline [sgosline@mit.edu], Mandy Kedaigle [mandyjoy@mit.edu]
 
-Copyright (c) 2015 Sara JC Gosline, Mandy Kedaigle
+Copyright (c) 2015-2016 Sara JC Gosline, Mandy Kedaigle
 
+Reference:
+--------------------
+[Network-Based Interpretation of Diverse High-Throughput Datasets through the Omics Integrator Software Package](http://dx.doi.org/10.1371/journal.pcbi.1004879)
+Tuncbag N<sup>\*</sup>, Gosline SJC<sup>\*</sup>, Kedaigle A, Soltis AR, Gitter A, Fraenkel E. *PLoS Comput Biol* 12(4): e1004879. doi:10.1371/journal.pcbi.1004879.
 
 System Requirements:
 --------------------
@@ -29,7 +33,6 @@ install Anaconda (https://www.continuum.io/downloads) to obtain Python
 
 4. Cytoscape for viewing results graphically (tested on versions 2.8-3.2):
 http://www.cytoscape.org
-
 
 Features
 --------
@@ -58,8 +61,8 @@ To use the [Homebrew](http://brew.sh/) package manager for Mac simply type `brew
 3. Unpack files from the archive: `tar -xvf msgsteiner-1.1.tgz`
 4. Enter the `msgsteiner-1.1` subdirectory and run make
   * See below for advice on compiling the C++ code if you encounter problems. Make a note of the path to the compiled msgsteiner file that was created, which you will use when running Forest.
-5. Download the Omics Integrator package: [OmicsIntegrator-0.1.0.tar.gz](./dist/OmicsIntegrator-0.1.0.tar.gz)
-6. Unpack files from the archive: `tar -xvzf OmicsIntegrator-0.1.0.tar.gz`
+5. Download the Omics Integrator package: [OmicsIntegrator-0.2.0.tar.gz](./dist/OmicsIntegrator-0.2.0.tar.gz)
+6. Unpack files from the archive: `tar -xvzf OmicsIntegrator-0.2.0.tar.gz`
 7. Make sure you have all the requirements using the pip tool by entering the
 directory and typing: `pip install -r requirements.txt`
 
@@ -75,7 +78,7 @@ We provide many scripts and files to showcase the various capabilities of Omics
 Integrator.  To run this:
 
 1. Download the [example files](./dist/OmicsIntegratorExamples.tar.gz)
-2. Unpack by typing `tar -xvzf OmicsIntegratorExamples.targ.gz` in the `dist`
+2. Unpack by typing `tar -xvzf OmicsIntegratorExamples.tar.gz` in the `dist`
 directory.
 
 For specific details about the examples, check out the [README
@@ -103,7 +106,8 @@ Options:
   --utilpath=ADDPATH    Destination of chipsequtil library, Default=../src
 ```
 
-The configuration file should take the following format:
+Unlike Forest, the Garnet configuration file is a positional argument and must not
+be preceded with `--conf=`.  The configuration file should take the following format:
 
 ### garnet input
 
@@ -154,7 +158,7 @@ the genome used.  The default `numthreads` is 4, but the user can alter this
 depending on the processing power of their machine. `doNetwork` will create a
 NetworkX object mapping transcription factors to genes, required input for the
 [SAMNet algorithm](http://github.com/sgosline/SAMNet).  `tfDelimiter` is an
-internal parameter to tell garnet how to handle cases when many transcription
+internal parameter to tell Garnet how to handle cases when many transcription
 factors map to the sam binding motif.
 
 #### expressionData
@@ -213,7 +217,7 @@ garnet script.
 Running forest.py
 -----------------
 
-Forest **requires** the compiled msgsteiner package as well as the boost library.
+Forest **requires** the compiled msgsteiner package.
 
 ```
 Usage: forest.py [options]
@@ -237,8 +241,9 @@ Options:
                         Path to the text file containing the parameters.
                         Should be several lines that looks like:
                         "ParameterName = ParameterValue". Must contain values
-                        for w, b, D.  May contain values for optional
-                        parameters mu, garnetBeta, r, g. Default = "./conf.txt"
+                        for w, b, D. May contain values for optional
+                        parameters mu, garnetBeta, noise, r, g. Default =
+                        "./conf.txt"
   -d DUMMYMODE, --dummyMode=DUMMYMODE
                         Tells the program which nodes in the interactome to
                         connect the dummy node to. "terminals"= connect to all
@@ -274,7 +279,9 @@ Options:
                         add noise to the given edge values and re-run the
                         algorithm. Results of these runs will be merged
                         together and written in files with the word
-                        "_noisyEdges_" added to their names. Default = 0
+                        "_noisyEdges_" added to their names. The noise level
+                        can be controlled using the configuration file.
+                        Default = 0
   --shuffledPrizes=SHUFFLENUM
                         An integer specifying how many times you would like to
                         shuffle around the given prizes and re-run the
@@ -317,21 +324,29 @@ human interactome example (this interactome comes from iRefIndex v13, scored and
 formatted for our code).
 
 A sample configuration file, `a549/tgfb_forest.cfg` is supplied. The user can
-change the values included in this file directly or can supply their own
-similarly formatted file. If the -c option is not included in the command line
-the program will attempt to read `conf.txt`. The parameters `w`, `b`, and `D`
-must be set in this file. Optional parameters `mu`, `garnetBeta`, and  `g` may
-also be included.
+change the values included in this file or can supply their own
+similarly formatted file. Unlike Garnet, the Forest configuration file name must
+be preceded with `-c` or `--conf=`.
+If the `-c` argument is not included in the command line
+the program will attempt to read the default `conf.txt`. The parameters `w`, `b`, and `D`
+must be set in the configuration file. Optional parameters `mu`, `garnetBeta`, `noise`,
+`g`, and `r` may also be included.
 
 ```
-w  = int, controls the number of trees
+w = int, controls the number of trees
 b = int, controls the trade-off between including more
     terminals and using less reliable edges
 D = int, controls the maximum path-length from v0 to terminal nodes
 mu = float, controls the degree-based negative prizes (defualt 0.0)
 garnetBeta = float, scales the garnet output prizes relative to the
              provided protein prizes (default 0.01)
-g = float, affects the convergence of the solution & runtime (default 0.001)
+noise = float, controls the standard deviation of the Gaussian edge
+        noise when the --noisyEdges option is used (default 0.333)
+g = float, msgsteiner parameter that affects the convergence of the
+    solution and runtime (default 0.001)
+r = float, msgsteiner parameter that adds random noise to edges,
+    which is rarely needed because the Forest --noisyEdges option
+    is recommended instead (default 0)
 processes = int, number of processes to spawn when doing randomization runs
             (default to number of processors on your computer)
 
@@ -345,7 +360,7 @@ For more details about the parameters, see our publication.
 The rest of the command line options are optional.
 
 If you have run the garnet module to create scores for transcription factors,
-you can include that output file with the `--garnet` option and use `n` in the
+you can include that output file with the `--garnet` option and use `garnetBeta` in the
 configuration file to scale the garnet scores.
 
 The `--dummyMode` option will change which nodes in the terminal are connected
@@ -373,24 +388,23 @@ the output files to be compatiable with.
 We include three options, `--noisyEdges`, `--shuffledPrizes`, and
 `--randomTerminals` to determine how robust your results are by comparing them
 to results with slightly altered input values. To use these options, supply a
-number for either parameter greater than 0.  If the number you give is more than
+number for either parameter greater than 0. If the number you give is more than
 1, it will alter values and run the program that number of times and merge the
 results together. The program will add Gaussian noise to the edge values you
 gave in the `-e` option, or shuffle the prizes around all the network proteins
-in the `-p` option, or assign the prizes to netowrk proteins with similar
+in the `-p` option, or assign the prizes to network proteins with similar
 degrees as your original terminals, according to which option you use. In
-`--noisyEdges`, the standard deviation of the Gaussian noise will be the value
-the user supplied for the parameter `n` in the `-c` configuration file, if
-given. If not given, the standard deviation will be the 0.333. The results from
-these runs will be stored in seperate files from the results of the run with the
-original prize or edge values, and both will be outputted by the program to the
-same directory.
+`--noisyEdges`, Gaussian noise with mean 0 and standard deviation specified by
+the parameter `noise` in the configuration file (default 0.333) will be added
+to the edge scores. The results from these runs will be stored in seperate files
+from the results of the run with the original prize or edge values, and both
+will be outputted by the program to the same directory.
 
 The knockout option can be used if you would like to simulate a knockout
 experiment by removing a node from your interactome. Specify your knockout
 proteins in a list, i.e. ['TP53'] or ['TP53', 'EGFR'].
 
-The `-k` and `--cv` optionz can be used if you would like to run k-fold cross
+The `-k` and `--cv` options can be used if you would like to run k-fold cross
 validation. This will partition the proteins with prizes into k equal
 subsamples. It will run msgsteiner k times, leaving one subsample of prizes out
 each time. The `--cv-reps` option can be used if you would like to run k-fold
@@ -455,3 +469,7 @@ first row of the file should be interpreted as column labels. Click OK.
 
 When the network and the attributes are imported into Cytoscape, you can alter
 the appearance of the network as you usually would using VizMapper.
+
+Testing
+-----------------
+See the `tests` directory for instructions on testing Omics Integrator.

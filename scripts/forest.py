@@ -57,7 +57,8 @@ class PCSFInput(object):
                 self.dummyNodeNeighbors - a list of all proteins that the dummy node should have
                                           edges to.
                 self.interactomeNodes - a list of all nodes in the interactome
-                self.w, self.b, self.D, self.n, self.mu, self.g, self.r, self.threads - parameters
+                self.w, self.b, self.D, self.gb, self.mu, self.g, self.r, self.threads,
+                                self.noise - parameters
         """
         if prizeFile==None or edgeFile==None:
             sys.exit('PCSF.py failed. Needs -p and -e arguments. Run PCSF.py -h for help.')
@@ -86,7 +87,7 @@ class PCSFInput(object):
             if line.startswith('mu ='):
                 mu = line.strip().split()[-1]
             if line.startswith('garnetBeta ='):
-                n = line.strip().split()[-1]
+                gb = line.strip().split()[-1]
             if line.startswith('r ='):
                 r = line.strip().split()[-1]
             if line.startswith('g ='):
@@ -95,6 +96,8 @@ class PCSFInput(object):
                 threads = line.strip().split()[-1]
             if line.startswith('processes ='):
                 processes = line.strip().split()[-1]
+            if line.startswith('noise ='):
+                noise = line.strip().split()[-1]
         c.close()
         try:
             mu = float(mu)
@@ -107,9 +110,9 @@ class PCSFInput(object):
         except:
             mu = 0.0
         try:
-            n = float(n)
+            gb = float(gb)
         except:
-            n = 0.01 # Default n
+            gb = 0.01 # Default garnetBeta
         try:
             r = float(r)
         except:
@@ -119,6 +122,10 @@ class PCSFInput(object):
         except:
             g = 1e-3 # Default g
         try:
+            noise = float(noise)
+        except:
+            noise = 0.333 # Default edge noise (standard deviation)
+        try:
             threads = int(threads)
         except:
             threads = 1
@@ -127,19 +134,20 @@ class PCSFInput(object):
         except:
             processes = None
         try:
-            print 'Continuing with parameters w = %f, b = %f, D = %i, mu = %f, g = %f, n = %f.' \
-                  %(float(w), float(b), int(D), mu, g, n)
+            print 'Continuing with parameters w = %f, b = %f, D = %i, mu = %f, g = %f, garnetBeta = %f, r = %f, noise = %f.' \
+                  %(float(w), float(b), int(D), mu, g, gb, r, noise)
         except:
             sys.exit('ERROR: There was a problem reading the file containing parameters. Please '\
-                     'include appropriate values for w, b, D, and optionally mu, n, or g.')
+                     'include appropriate values for w, b, D, and optionally mu, r, garnetBeta, g, or noise.')
                      
         self.w = float(w)
         self.b = float(b)
         self.D = int(D)
         self.mu = mu
-        self.n = n
+        self.gb = gb
         self.r = r
         self.g = g
+        self.noise = noise
         self.threads = threads
         self.processes = processes
         
@@ -345,7 +353,8 @@ class PCSFInput(object):
                 if words[0] not in undirEdges and words[0] not in dirEdges:
                     count += 1
                 else:
-                    prize = float(words[1])*self.n
+                    # Scale prize using garnetBeta
+                    prize = float(words[1])*self.gb
                     #If the TF already has a prize value this will replace it.
                     origPrizes[words[0]] = prize
                     if words[0] in terminalTypes.keys():
@@ -521,7 +530,8 @@ class PCSFInput(object):
         print 'All directed edges in the input interactome were', self.dirEdges
         print 'The dummy node was connected to nodes: '+ str(self.dummyNodeNeighbors)
         print 'The parameters were: w= ' + self.w + ' b= ' +self.b+ ' D= ' + self.D + ' mu= '\
-              + self.mu + ' r= ' + self.r + ' g= ' + self.g
+              + self.mu + ' r= ' + self.r + ' g= ' + self.g + ' garnetBeta= ' + self.gb\
+              + ' noise= ' + self.noise
     
     def runPCSF(self, msgpath, seed):
         """
@@ -599,8 +609,8 @@ class PCSFInput(object):
             sys.exit('ERROR: There was a problem running the message passing algorithm. <%s>: %s' \
                      %(errcode, errmess))
         print 'Message passing run finished with the parameters: w = %s, b = %s, D = %s, mu = %s' \
-              ', g = %s\n' \
-              %(self.w, self.b, self.D, self.mu, self.g)
+              ', g = %s, r = %s\n' \
+              %(self.w, self.b, self.D, self.mu, self.g, self.r)
         input.close()
         info = subproc.stderr.read()
         subproc.stderr.close()
@@ -1033,12 +1043,9 @@ def noiseEdges(PCSFInputObj, seed, excludeT):
     """
     #Make a new PCSFInput object that contains all the same values as the original
     newPCSFInputObj = copy.deepcopy(PCSFInputObj)
-    #Generate gaussian noise values, mean=0, stdev default=0.33 (edge values range between 0 and 1)
+    #Generate gaussian noise values, mean=0, stdev default=0.333 (edge values range between 0 and 1)
     random.seed(seed)
-    if PCSFInputObj.n == None:
-        dev = 0.333
-    else:
-        dev = PCSFInputObj.n
+    dev = PCSFInputObj.noise
     for node1 in newPCSFInputObj.dirEdges:
         for node2 in newPCSFInputObj.dirEdges[node1]:
             newPCSFInputObj.dirEdges[node1][node2] = float(PCSFInputObj.dirEdges[node1][node2]) + \
@@ -1295,7 +1302,7 @@ def main():
     parser.add_argument("-c", "--conf", dest='confFile', help='Path to the text file containing '\
         'the parameters. Should be several lines that looks like: "ParameterName = '\
         'ParameterValue". Must contain values for w, b, D.  May contain values for optional '\
-        'parameters mu, n, r, g. Default = "./conf.txt"', default='conf.txt')
+        'parameters mu, garnetBeta, noise, r, g. Default = "./conf.txt"', default='conf.txt')
     parser.add_argument("-d","--dummyMode", dest='dummyMode', help='Tells the program which nodes '\
         'in the interactome to connect the dummy node to. "terminals"= connect to all terminals, '\
         '"others"= connect to all nodes except for terminals, "all"= connect to all '\
@@ -1325,7 +1332,8 @@ def main():
     parser.add_argument("--noisyEdges", dest='noiseNum', help='An integer specifying how many '\
         'times you would like to add noise to the given edge values and re-run the algorithm. '\
         'Results of these runs will be merged together and written in files with the word '\
-        '"_noisyEdges_" added to their names. Default = 0', type=int, default=0)
+        '"_noisyEdges_" added to their names. The noise level can be controlled using the '\
+        'configuration file. Default = 0', type=int, default=0)
     parser.add_argument("--shuffledPrizes", dest='shuffleNum', help='An integer specifying how '\
         'many times you would like to shuffle around the given prizes and re-run the algorithm. '\
         'Results of these runs will be merged together and written in files with the word '\
