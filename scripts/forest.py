@@ -1297,8 +1297,6 @@ def main():
         'containing the interactome edges. Should be a tab delimited file with 3 or 4 columns: '\
         '"ProteinA\tProteinB\tWeight(between 0 and 1)\tDirectionality(U or D, optional)"')
     #optional arguments
-    parser.add_argument("--sweep", dest='sweep', help='Attribute to sort Steiner Forests. Check Readme for full list.', 
-                        default=None)
     parser.add_argument("-c", "--conf", dest='confFile', help='Path to the text file containing '\
         'the parameters. Should be several lines that looks like: "ParameterName = '\
         'ParameterValue". Must contain values for w, b, D.  May contain values for optional '\
@@ -1329,6 +1327,8 @@ def main():
         default=True)
     parser.add_argument("--cyto28", action='store_false', dest='cyto30', help='Use this flag if '\
         'you want the output files to be amenable with Cytoscape v2.8, rather than v3.0.')
+    parser.add_argument("--sweep", dest='sweep', help='Attribute to sort Steiner Forests. Check Readme for full list.', 
+                        default=None)
     parser.add_argument("--noisyEdges", dest='noiseNum', help='An integer specifying how many '\
         'times you would like to add noise to the given edge values and re-run the algorithm. '\
         'Results of these runs will be merged together and written in files with the word '\
