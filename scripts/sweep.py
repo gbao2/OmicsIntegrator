@@ -1,11 +1,10 @@
 '''
 parameter sweep
 '''
-import re, sys, os, SortSum, argparse
+import re, sys, os, argparse
 import CalcSummary as cs
 import SortSum as ss
 import numpy as np
-import networkx as nx
 
 def paramSweep(options):
     
@@ -59,6 +58,9 @@ def paramSweep(options):
                     
                 os.system("python forest.py --prize %s --edge %s --conf %s --msgpath %s --outpath %s" %(options.prizeFile,options.edgeFile, conf_path, options.msgpath, abs_path))
                 
+                # Could code starting here through end of function to a call
+                # to justSum, passing the options
+                # Would need to add '_' to outputLabel
                 sumListEntry = []
                 sumListEntry.append(w)
                 sumListEntry.append(b)
@@ -85,7 +87,8 @@ def justSum(options):
     runs = [x[0] for x in os.walk(options.outputpath)]
     sumList = []
     params = []
-    first = True 
+    first = True
+    # Skip parent directory
     runs = runs[1:]
 
     '''
@@ -112,6 +115,8 @@ def justSum(options):
     toPrintList = finalSumObject.getSumList()
 
     with open(os.path.join(options.outputpath + "/summary_statistics"), "w+") as sumFile:
+        # Could use params list to determine which parameters were set in the config
+        # file instead of assuming w, b, D
         sumFile.write('w\tb\tD\t{}\n'.format(options.sweep))
         for item in toPrintList:
             for x in range(len(item) - 1):
@@ -138,6 +143,7 @@ if __name__ == "__main__":
 
     '''
     parser = argparse.ArgumentParser(description='Standalone sweep')
+    # Add the list of valid sweep options to Readme once more are implemented
     parser.add_argument("--sweep", dest='sweep', help='Attribute to sort Steiner Forests. Check Readme for full list.', 
                         default=None)
     parser.add_argument("--outpath", dest = 'outputpath', help='Path to the directory which '\

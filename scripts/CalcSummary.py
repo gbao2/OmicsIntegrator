@@ -1,5 +1,5 @@
 import networkx as nx
-import sys, os
+import os
 '''
 Calculate forest summary topologies.
 '''
@@ -7,6 +7,7 @@ Calculate forest summary topologies.
 class CalcSummary:
 
     def __init__(self, path, filePrefix, toBeSortedOn):
+        # Can sometimes be a single number, for example, the node count
         self.returnList = []
         self.path = path
         self.graph = None
@@ -14,6 +15,8 @@ class CalcSummary:
         self.attr = toBeSortedOn
 
 
+    # If the network loading ever needs to be reused, could split
+    # it into a separate utility function and pass the .sif filename
     '''
     parses a optimizedForest.sif file. pp is undirected, pd directed.
     networkx currently does not support mixed graphs, so for all pp edges,
@@ -36,6 +39,8 @@ class CalcSummary:
                     G.add_edge(edge[0], edge[2])
             self.graph = G
 
+    # In the future, could also have keywords that compute and return
+    # multiple statistics
     def calcStatistic(self):
         '''
         call appropriate test statistic function here, using toBeSortedOn

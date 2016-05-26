@@ -26,6 +26,8 @@ class SortSum:
         if self.attr == "nn":
             self.toPrintList = self.nnSort()
             
+    # Could reuse some of the sorting functions, for example, if an
+    # edge count was added it would be sorted the same way as the node count
     '''
     the return list in CalcStatistics.py is of a single value in an array, and
     therefore  the assumed structure of self.sumList is [params, x] for a run of
