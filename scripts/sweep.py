@@ -60,7 +60,7 @@ def paramSweep(options):
                 
                 # Could code starting here through end of function to a call
                 # to justSum, passing the options
-                # Would need to add '_' to outputLabel
+                # Would need to add '_' to outputLabel or change justSum
                 sumListEntry = []
                 sumListEntry.append(w)
                 sumListEntry.append(b)
@@ -106,6 +106,8 @@ def justSum(options):
                 sumListEntry.append(float(ln[2].rstrip()))
                 if first:
                     params.append(ln[0])
+        # May want to automaticaly add the '_' to outputlabel instead of having
+        # the user do it
         summaryObject = cs.CalcSummary(run, options.outputlabel, options.sweep)
         sumListEntry.append(summaryObject.getSummary())
         sumList.append(sumListEntry)

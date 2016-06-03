@@ -1,4 +1,4 @@
-import networkx as nx
+import forest_util as fut
 import os
 '''
 Calculate forest summary topologies.
@@ -15,29 +15,13 @@ class CalcSummary:
         self.attr = toBeSortedOn
 
 
-    # If the network loading ever needs to be reused, could split
-    # it into a separate utility function and pass the .sif filename
     '''
     parses a optimizedForest.sif file. pp is undirected, pd directed.
     networkx currently does not support mixed graphs, so for all pp edges,
     a directed edge both to and from each node in the entry is created.
     '''
     def make_graph(self):
-        edges = []
-        with open(os.path.join(self.path, self.fP + "optimalForest.sif"), 'r') as file:
-            for line in file:
-                ln = line.split()
-                for x in range(len(ln)):
-                    ln[x] = ln[x].rstrip()
-                    edges.append(ln)
-            G = nx.DiGraph()
-            for edge in edges:
-                if edge[1] == "pp":
-                    G.add_edge(edge[0], edge[2])
-                    G.add_edge(edge[2], edge[0])
-                else:
-                    G.add_edge(edge[0], edge[2])
-            self.graph = G
+        self.graph = fut.loadGraph(os.path.join(self.path, self.fP + "optimalForest.sif"))
 
     # In the future, could also have keywords that compute and return
     # multiple statistics
