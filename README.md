@@ -1,15 +1,17 @@
+<center><img src="http://fraenkel-nsf.csbi.mit.edu/omicsintegrator/omicsI_logo.png" height="40%" width="40%" ></center>
+
 ===============================
 Omics Integrator
 ===============================
 
-Omics Integrator is a package designed to integrate gene expression data and/or
-proteomics data using the protein-protein interaction network. It is comprised
-of two modules, Garnet and Forest, that perform data integration of various
-types of data.
+[![Build Status](https://travis-ci.org/fraenkel-lab/OmicsIntegrator.svg?branch=master)](https://travis-ci.org/fraenkel-lab/OmicsIntegrator)
 
-Contact: Sara JC Gosline [sgosline@mit.edu], Mandy Kedaigle [mandyjoy@mit.edu]
+Omics Integrator is a package designed to integrate proteomic data, gene expression data and/or epigenetic data using a protein-protein interaction network. It is comprised of two modules, Garnet and Forest.
 
-Copyright (c) 2015-2016 Sara JC Gosline, Mandy Kedaigle
+Contact: Amanda Kedaigle [mandyjoy@mit.edu]
+
+Copyright (c) 2015 Massachusetts Institute of Technology
+All rights reserved.
 
 Reference:
 --------------------
@@ -27,7 +29,7 @@ install Anaconda (https://www.continuum.io/downloads) to obtain Python
   - matplotlib: http://matplotlib.org/
   - Networkx: http://networkx.github.io
 
-2. msgsteiner package (version msgsteiner-1.1.tgz): http://areeweb.polito.it/ricerca/cmp/code/bpsteiner
+2. msgsteiner package (version 1.3): [code](http://staff.polito.it/alfredo.braunstein/code/msgsteiner-1.3.tgz), [license](http://areeweb.polito.it/ricerca/cmp/code/bpsteiner)
 
 3. Boost C++ library: http://www.boost.org
 
@@ -57,16 +59,16 @@ does not include Boost, follow the [Boost getting started
 guide](http://www.boost.org/doc/libs/1_59_0/more/getting_started/index.html) for
 instructions on how to download the library and extract files from the archive.
 To use the [Homebrew](http://brew.sh/) package manager for Mac simply type `brew install boost` to install the library.
-2. Download `msgsteiner-1.1.tgz` from http://areeweb.polito.it/ricerca/cmp/code/bpsteiner
-3. Unpack files from the archive: `tar -xvf msgsteiner-1.1.tgz`
-4. Enter the `msgsteiner-1.1` subdirectory and run make
-  * See below for advice on compiling the C++ code if you encounter problems. Make a note of the path to the compiled msgsteiner file that was created, which you will use when running Forest.
-5. Download the Omics Integrator package: [OmicsIntegrator-0.2.0.tar.gz](./dist/OmicsIntegrator-0.2.0.tar.gz)
-6. Unpack files from the archive: `tar -xvzf OmicsIntegrator-0.2.0.tar.gz`
+2. Download `msgsteiner-1.3.tgz` from http://staff.polito.it/alfredo.braunstein/code/msgsteiner-1.3.tgz ([license](http://areeweb.polito.it/ricerca/cmp/code/bpsteiner))
+3. Unpack files from the archive: `tar -xvf msgsteiner-1.3.tgz`
+4. Enter the `msgsteiner-1.3` subdirectory and run `make`
+  * See [this advice](./patches) on compiling the C++ code if you encounter problems and [this advice](https://github.com/fraenkel-lab/OmicsIntegrator/issues/22) regarding compilation issues on OS X.
+  * Make a note of the path to the compiled msgsteiner file that was created, which you will use when running Forest.
+  * In Linux, use `readlink -f msgsteiner` in the `msgsteiner-1.3` subdirectory to obtain the path.
+5. Download the Omics Integrator package: [OmicsIntegrator-0.3.0.tar.gz](./dist/OmicsIntegrator-0.3.0.tar.gz)
+6. Unpack files from the archive: `tar -xvzf OmicsIntegrator-0.3.0.tar.gz`
 7. Make sure you have all the requirements using the pip tool by entering the
 directory and typing: `pip install -r requirements.txt`
-
-
   * Some users have reported errors when using this command to install matplotlib. To fix, install matplotlib independently (http://matplotlib.org) or use Anaconda as indicated above.
 
 Now Omics Integrator is installed on your computer and can be used to analyze
@@ -80,6 +82,7 @@ Integrator.  To run this:
 1. Download the [example files](./dist/OmicsIntegratorExamples.tar.gz)
 2. Unpack by typing `tar -xvzf OmicsIntegratorExamples.tar.gz` in the `dist`
 directory.
+3. Move the unpacked files into the `example` directory.
 
 For specific details about the examples, check out the [README
 file](./example/README.md) in the example directory.
@@ -135,6 +138,10 @@ tfDelimiter = .
 expressionFile = tabDelimitedExpressionData.txt
 pvalThresh = 0.01
 qvalThresh =
+
+[regression]
+#for generating and saving regression plots
+savePlot=False
 ```
 
 #### Chromatin Data
@@ -143,7 +150,7 @@ Many BED-formatted (`bedfile`) and FASTA-formatted (`fastafile`) files are
 included in the examples/ directory. `bedfile` can also be output from MACS
 (with a `.xls` extension) or GPS/GEM (with a `.txt` extension).
 To use your own epigenetic data, convert to BED and upload the
-BED-file to http://usegalaxy.org and select `Fetch Genomic DNA` from the left
+BED-file to http://usegalaxy.org and select `Fetch Alignments/Sequences` from the left
 menu to click on `Extract Genomic DNA`. This will produce a FASTA-formatted file
 that will work with garnet.  We have provided gene (`genefile`) and xref
 (`xreffile`)  annotations for both hg19 and mm9 - these files can be downloaded
@@ -171,9 +178,14 @@ statistically significant. P-value (`pvalThresh`) or Q-value (`qvalThresh`)
 thresholds will be used to select only those transcription factors whose
 correlation with expression falls below the provided threshold.
 
-### garnet output
+#### regression
 
-garnet produces a number of intermediate files that enable you
+Linear regression plots are placed in a subdirectory named `regression_plots` if
+`savePlot=True` in the configuration file.
+
+### Garnet output
+
+Garnet produces a number of intermediate files that enable you
 to better interpret your data or re-run a sub-script that may have failed. All
 files are placed in the directory provided by the `--outdir` option of the
 garnet script.
@@ -208,11 +220,13 @@ garnet script.
   regression.
 
 - **events_to_genes_with_motifsregression_results_FOREST_INPUT.tsv**: Only those
-  results from the regression that fall under a provided significance threshold,
-  e.g. p=0.05.  This file can be used as input to forest.
+  regression results that fall under the p-value or q-value significance
+  threshold provided in the configuration file, e.g. p=0.05, are included.
+  This file can be used as input to Forest, and the prizes are -log2(pval)
+  or -log2(qval).
 
-
-
+- **regression_plots**: An optional subdirectory that contains plots visualizing
+  the transcription factor linear regression tests.
 
 Running forest.py
 -----------------
@@ -264,7 +278,7 @@ Options:
                         prizes. Use if you want terminals to keep exact
                         assigned prize regardless of degree.
   --msgpath=MSGPATH     Full path to the message passing code. Default =
-                        "<current directory>/msgsteiner9"
+                        "<current directory>/msgsteiner"
   --outpath=OUTPUTPATH  Path to the directory which will hold the output
                         files. Default = this directory
   --outlabel=OUTPUTLABEL
@@ -333,8 +347,8 @@ must be set in the configuration file. Optional parameters `mu`, `garnetBeta`, `
 `g`, and `r` may also be included.
 
 ```
-w = int, controls the number of trees
-b = int, controls the trade-off between including more
+w = float, controls the number of trees
+b = float, controls the trade-off between including more
     terminals and using less reliable edges
 D = int, controls the maximum path-length from v0 to terminal nodes
 mu = float, controls the degree-based negative prizes (defualt 0.0)
@@ -373,9 +387,9 @@ squared degree, as opposed to linear degree. This is helpful if the default
 mu behavior is not strict enough to eliminate irrelevant hub nodes from your
 network.
 
-If the user is not keeping the file `msgsteiner` in the same directory as
-forest.py, the path needs to be specified using the `--msgpath` option, i.e
-'--msgpath /home/msgsteiner-1.1/msgsteiner'.
+If the file `msgsteiner` is not in the same directory as
+forest.py, the path needs to be specified using the `--msgpath` option, e.g.,
+'--msgpath /home/msgsteiner-1.3/msgsteiner'.
 
 If you would like the output files to be stored in a directory other than the
 one you are running the code from, you can specify this directory with the
@@ -448,7 +462,7 @@ edges not chosen by the algorithm. Betweenness centrality for all nodes was
 calculated with this network.
 
 - **dummyForest.sif** is the same as optimalForest.sif, only it includes the
-  dummy node and all edges connecting to it.
+dummy node and all edges connecting to it.
 
 - **edgeattributes.tsv** is a tab-seperated value file containing information
   for each edge in the network, such as the weight in the interactome, and the

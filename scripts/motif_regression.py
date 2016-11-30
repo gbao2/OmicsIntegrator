@@ -81,7 +81,7 @@ def map_data(Xdata,Xnames,Ydata,Ynames):
     #print ','.join(yn[0:20])
     return Xdata_out,Ydata_out
 
-def perform_regression(X,Y,motif_ids,norm):
+def perform_regression(X,Y,motif_ids,norm,outdir,plot):
     '''
 
     '''
@@ -99,13 +99,30 @@ def perform_regression(X,Y,motif_ids,norm):
         # Perform regression
         slope,intercept,r_val,p_val,std_err = stats.linregress(x,y)
         reg_results.append(([motif_ids[i],slope,p_val,i]))
-
-        #fig = plt.figure()
-        #ax1 = fig.add_subplot(111)
-        #ax1.plot(x,y,'bo',x,intercept+slope*x,'k')
-        #ax1.set_title(motif_ids[i])
-        #fig.savefig(open('test_plots/'+motif_ids[i]+'.pdf','w'),dpi=300)
-        #plt.close()
+	
+	#regression plot
+	if plot:
+	    fig = plt.figure()
+	    ax1 = fig.add_subplot(111)
+	    ax1.plot(x,y,'bo',x,intercept+slope*x,'k')
+	    ax1.set_title(motif_ids[i])
+	    ax1.set_xlabel('Estimated transcription factor affinity')
+	    ax1.set_ylabel('Expression log fold change')
+	    #checking if a subdirectory is present to save plots
+	    plotdir = os.path.join(os.path.split(outdir)[0],'regression_plots')
+	    
+	    if not os.path.isdir(plotdir):
+			os.makedirs(plotdir)
+	    #cleaning all motif ids to have all alphanumeric name
+	    if not re.match(r'^[A-Za-z0-9.]*$', motif_ids[i]):
+			motif_ids[i] = "".join(c for c in motif_ids[i] if c not in ('!','$','@','!','%','*','\\','/','_','-'))	    
+	    #file name must be within max characters supported by os 
+	    if len(motif_ids[i])>162:
+			st = motif_ids[i]
+			motif_ids[i] = st[0:160]
+	    plotfile = os.path.join(plotdir,motif_ids[i]+'.pdf')
+	    fig.savefig(open(plotfile,'w'),dpi=300)
+	    plt.close()	    
 
     return sorted(reg_results,key=lambda x: x[2])
 
@@ -147,10 +164,11 @@ def main():
     parser.add_option('--norm-type',dest='norm_type',default=None,
                       help='Choose normalization type for response data. Choices are: "log2", "log10".\
                             Default is %default.')    
-    parser.add_option('--use-qval',dest='use_qval',action='store_true',default=False,help='If set this the FOREST input file will contain -log(qval) instead of -log(pval). Default:%default')
+    parser.add_option('--use-qval',dest='use_qval',action='store_true',default=False,help='If set this the Forest input file will contain -log(qval) instead of -log(pval) and threshold the output using qval. Default:%default')
     parser.add_option('--thresh',dest='thresh',type='string',default='0.9',help='P/Q-Value threshold to illustrate results. Default:%default')
     parser.add_option('--gifdir',dest='motifs',default=os.path.join(progdir,'../data/matrix_files/gifs'),
                       help='Directory containing motif GIFs to illustrate results. Default is %default')
+    parser.add_option('--plot',dest='plot',action='store_true',default=False,help='Enable plot generation for regression results. Default:%default')
 
     # get options, arguments
     (opts,args) = parser.parse_args()
@@ -215,7 +233,7 @@ def main():
     X,Y=map_data(tgm_data,tgm_genes,response_data,response_genes)
     
     # Perform regression
-    reg_results=perform_regression(X,Y,motif_ids,norm_type)
+    reg_results=perform_regression(X,Y,motif_ids,norm_type,outdir,opts.plot)
     
     # FDR correction
     new_results = fdr_correction(reg_results)
@@ -236,6 +254,7 @@ def main():
     of.close()
 
     ##now create HTML writeup
+    threshold = float(opts.thresh)
     of= open(re.sub(outdir.split('.')[-1],'html',outdir),'w')
     of.writelines("""<html>
                      <title>GARNET Results</title>
@@ -246,8 +265,9 @@ def main():
                 """)
     for res in new_results:
         if str(res[1])=='nan':
-            continue    
-        if res[4]<float(opts.thresh):
+            continue
+        # skip rows that exceed the q-value or p-value threhsold
+        if (opts.use_qval and res[4]<=threshold) or ((not opts.use_qval) and res[2]<=threshold):
             motifgif=os.path.join(opts.motifs,'motif'+str(res[3])+'.gif')
             ostr = "<tr><td>"+' '.join(res[0].split('.'))+"</td><td>"+str(res[1])+'</td><td>'+str(res[2])+"</td><td>"+str(res[4])+"</td><td><img src=\""+motifgif+"\" scale=80%></td></tr>\n"
             of.writelines(ostr)
@@ -255,26 +275,28 @@ def main():
     of.close()
     
     
-    ##now write to FOREST-friendly input file
+    ##now write to Forest-friendly input file
     ##collect dictionary of all individual tf names and their regression p-values
+    ##or q-values
     regdict={}
     for row in new_results:
         tfs=[t for t in row[0].split(delim) if t!='' and ' ' not in t]
 	#print row
         if str(row[1])=='nan':
-            continue    
+            continue
+        # skip rows that exceed the q-value or p-value threhsold
         if opts.use_qval:
-            if row[4]>float(opts.thresh):
+            if row[4]>threshold:
                 continue
-        elif row[2]>float(opts.thresh):
+        elif row[2]>threshold:
             continue
         for tf in tfs:
             if row[2]==1:
                 continue
             if opts.use_qval:
-                lpv=-1.0*np.log2(float(row[4]))#calculate neg log pvalue
+                lpv=-1.0*np.log2(float(row[4]))#calculate neg log2 qvalue
             else:
-                lpv=-1.0*np.log2(float(row[2]))#calculate neg log pvalue
+                lpv=-1.0*np.log2(float(row[2]))#calculate neg log2 pvalue
             try:
                 cpv=regdict[tf]
             except KeyError:
@@ -283,7 +305,7 @@ def main():
                 regdict[tf]=lpv
     print 'Found '+str(len(regdict))+'Tf scores for '+str(len(new_results))+' motif results'
     of=open(re.sub('.tsv','_FOREST_INPUT.tsv',outdir),'w')
-    for tf in regdict.keys():
+    for tf in sorted(regdict.keys()):
         val=regdict[tf]
         of.write(tf+'\t'+str(val)+'\n')
     of.close()

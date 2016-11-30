@@ -297,6 +297,15 @@ class PCSFInput(object):
                     interactomeNodes.append(words[1])
             line = e.readline()
         e.close()
+
+        # dirEndpoints stores edge endpoints of all directed edges together in one set
+        # dirEdges is dict<str, dict<str, str>>
+        dirEndpoints = set()
+        for k, v in dirEdges.iteritems():
+          dirEndpoints.add(k)
+          for k2 in v.iterkeys():
+            dirEndpoints.add(k2)
+
         self.interactomeNodes = interactomeNodes
         if above1 > 0:
             print 'WARNING!! All edgeweights should be a probability of protein '\
@@ -331,7 +340,7 @@ class PCSFInput(object):
                 sys.exit('ERROR: File containing prizes should have exactly two columns: '\
                          'ProteinName\tPrizeValue. Protein names should not have spaces.')
             #Increase count if this is not in the interactome
-            if words[0] not in undirEdges and words[0] not in dirEdges:
+            if words[0] not in undirEdges and words[0] not in dirEndpoints:
                 count += 1
             else:
                 origPrizes[words[0]] = float(words[1])
@@ -341,28 +350,30 @@ class PCSFInput(object):
         
         if garnet != None: 
             print 'Reading text file containing TF regression results: %s...\n' %garnet
-            g = open(garnet, 'rb')
-            line = g.readline()
-            while line:
-                words = line.strip().split()
-                if len(words) != 2:
-                    print 'current line:', line
-                    sys.exit('ERROR: File containing TFs should have exactly two columns: '\
-                         'TF_Name\tPrizeValue. TF names should not have spaces.')
-                #Increase count if this is not in the interactome
-                if words[0] not in undirEdges and words[0] not in dirEdges:
-                    count += 1
-                else:
-                    # Scale prize using garnetBeta
-                    prize = float(words[1])*self.gb
-                    #If the TF already has a prize value this will replace it.
-                    origPrizes[words[0]] = prize
-                    if words[0] in terminalTypes.keys():
-                        terminalTypes[words[0]]+='_TF'
-                    else:
-                        terminalTypes[words[0]]='TF'
-                line = g.readline()
-            g.close()
+            if os.path.exists(garnet):
+                with open(garnet, 'rb') as g:
+                    line = g.readline()
+                    while line:
+                        words = line.strip().split()
+                        if len(words) != 2:
+                            print 'current line:', line
+                            sys.exit('ERROR: File containing TFs should have exactly two columns: '\
+                                 'TF_Name\tPrizeValue. TF names should not have spaces.')
+                        #Increase count if this is not in the interactome
+                        if words[0] not in undirEdges and words[0] not in dirEndpoints:
+                            count += 1
+                        else:
+                            # Scale prize using garnetBeta
+                            prize = float(words[1])*self.gb
+                            #If the TF already has a prize value this will replace it.
+                            origPrizes[words[0]] = prize
+                            if words[0] in terminalTypes.keys():
+                                terminalTypes[words[0]]+='_TF'
+                            else:
+                                terminalTypes[words[0]]='TF'
+                        line = g.readline()
+            else:
+                sys.exit('ERROR: No such garnet file %s' %garnet)
         
         #Warning if supplied proteins were not in the interactome
         percentexcluded = (count/float(len(origPrizes.keys())+count)) * 100
@@ -424,7 +435,7 @@ class PCSFInput(object):
             line = dummyFile.readline()
             while line:
                 line = line.strip()
-                if line not in undirEdges and line not in dirEdges:
+                if line not in undirEdges and line not in dirEndpoints:
                     #protein not in interactome. Ignore edge but add to tally
                     numExcluded += 1
                 else:
@@ -478,9 +489,9 @@ class PCSFInput(object):
                 if not excludeT:
                     try:
                         degree = DegreeDict[prot]
-                        prize = (self.b * float(self.origPrizes[prot])) +\
-                                 score(degree,self.mu,musquared)
                         negprize = score(degree,self.mu,musquared)
+                        prize = (self.b * float(self.origPrizes[prot])) +\
+                                 negprize
                         totalPrizes[prot] = prize
                         negPrizes[prot] = negprize
                     except KeyError:
@@ -649,6 +660,13 @@ class PCSFOutput(object):
         #Create networkx graph storing the result of msgsteiner
         optForest = nx.DiGraph()
         dumForest = nx.DiGraph()
+
+        # Compute the objective function score of the msgsteiner solution
+        # as defined in Eq 3 of Tuncbag et al 2016
+        # prizeTerm computed below
+        edgeTerm = 0 # cummulative edge costs of included edges
+        treesTerm = 0 # penalty for multiple trees
+
         edges = edgeList.split('\n')
         for edge in edges:
             words = edge.split()
@@ -659,34 +677,49 @@ class PCSFOutput(object):
                              'edges pointing towards the root dummy node!')
                 if words[1] == 'DUMMY':
                     dumForest.add_edge(words[1], words[0])
+                    treesTerm += inputObj.w
                     continue
                 #Add directed edges
                 try:
+                    edgeWeight = inputObj.dirEdges[words[1]][words[0]]
                     optForest.add_edge(words[1], words[0], 
-                                       weight=inputObj.dirEdges[words[1]][words[0]], 
+                                       weight=edgeWeight, 
                                        fracOptContaining=1.0)
+                    edgeTerm += 1 - float(edgeWeight)
                 except KeyError:
                     #Add undirected edges
-                    try:    
+                    try:
+                        # Undirected edges should have symmetric edge costs
+                        if inputObj.undirEdges[words[1]][words[0]] != inputObj.undirEdges[words[0]][words[1]]:
+                            sys.exit('ERROR: Undirected edges must have symmetric costs')
+                        edgeWeight = inputObj.undirEdges[words[1]][words[0]]
                         optForest.add_edge(words[1], words[0], 
-                                           weight=inputObj.undirEdges[words[1]][words[0]], 
+                                           weight=edgeWeight, 
                                            fracOptContaining=1.0)
                         optForest.add_edge(words[0], words[1], 
-                                           weight=inputObj.undirEdges[words[0]][words[1]], 
+                                           weight=edgeWeight, 
                                            fracOptContaining=1.0)
+                        edgeTerm += 1 - float(edgeWeight)
                     #edge not found in either dictionary
                     except KeyError:
                         sys.exit('ERROR: Edges were returned from the message passing algorithm '\
                                  'that were not found in the input data. Aborting program.')
+
+        # Initially store all of the prizes, then subtract the prize of those
+        # that are in the optimal forest
+        prizeTerm = sum(inputObj.totalPrizes.itervalues()) # cummulative prizes of excluded nodes
+
         #Add prizes from input data as node attribute. Steiner nodes have prize zero.
         #Also add fracOptContaining as node attribute.
         terminalCount = 0
         for node in optForest.nodes():
             try:
                 optForest.node[node]['prize'] = inputObj.totalPrizes[node]
+                prizeTerm -= inputObj.totalPrizes[node]
+
                 #Count terminal nodes (nodes that had prizes before mu)
                 try:
-                    orig = inputObj.origPrizes[node]
+                    inputObj.origPrizes[node]
                     terminalCount += 1
                 except KeyError:
                     pass
@@ -728,14 +761,25 @@ class PCSFOutput(object):
         
         #Write info about results in info file
         err.write('\n')
+        err.write('Total objective function: %f\n' % (prizeTerm + edgeTerm + treesTerm))
+        # \sum_{v \notin V_F} p'(v)
+        err.write('Excluded prizes term: %f\n' % prizeTerm)
+        # \sum_{e \in E_V} c(e)
+        err.write('Edge costs term: %f\n' % edgeTerm)
+        # \omega * \kappa
+        err.write('Number of trees term: %f\n' % treesTerm)
+
+        err.write('\n')
         err.write('There were %i terminals in the interactome.\n' %len(inputObj.origPrizes.keys()))
         err.write('There are %i terminals in the optimal forest.\n' %terminalCount)
         err.write('The optimal forest has %i nodes total.\n' %len(optForest.nodes()))
-        err.write('The roots in the optimal forest are ' + str([node for node in dumForest.nodes()
-                  if node != 'DUMMY']) + '\n')
-        err.write('Of these, ' + str([node for node in dumForest.nodes() if node != 'DUMMY' and 
-                  node not in optForest.nodes()]) + ' are singletons and will not show up in '\
-                  'optimalForest.sif since they have no leaves.\n')
+        opt_roots = [node for node in dumForest.nodes() if node != 'DUMMY']
+        err.write('The %d roots in the optimal forest are %s\n' % (len(opt_roots), str(opt_roots)))
+        singletons = [node for node in dumForest.nodes()\
+            if node != 'DUMMY' and node not in optForest.nodes()]
+        err.write('The %d singleton roots that will not show up in '\
+                  'the optimal forest are %s\n' % \
+                  (len(singletons), str(singletons)))
         err.close()
         
         self.augForest = augForest

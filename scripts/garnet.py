@@ -5,7 +5,7 @@ GARNET primary script executes 5 sub scripts according to provided configuration
 --------------------------------------------------------------------
 Config file:
 --------------------------------------------------------------------
-Configuration file should have 11 different varaibles provided.
+Configuration file should provide the following variables.
 [chromatinData]
 bedfile=[bed file of accessible chromatin regions]
 fastafile=[fasta file of same regions, collected via galaxyweb]
@@ -26,6 +26,9 @@ tfDelimiter=.
 expressionFile=[name of expression file]
 pvalThresh=0.01
 qvalThresh=
+
+[regression]
+savePlot=False
 =======================================================================
 
 '''
@@ -132,7 +135,7 @@ def createBindingMatrix(motif_binding_out,outfile,fastafile,tamo_file,use_unipro
     return res,pklfile
 
 
-def getTfsFromRegression(pickle_file,expressionfile,pvalT,qvalT):
+def getTfsFromRegression(pickle_file,expressionfile,pvalT,qvalT,plot):
     '''
     Fourth step of GARNET is to perform regression with pickled matrix file and expression data
     '''
@@ -152,6 +155,10 @@ def getTfsFromRegression(pickle_file,expressionfile,pvalT,qvalT):
         else:
             thresh=pvalT
         cmd+=' --thresh='+thresh
+        
+        if plot:        
+            cmd+=' --plot'
+
         print '\n-----------------------------Regression Output------------------------------------------\n'
         print 'Running command:\n'+cmd+'\n'
         res=os.system(cmd)
@@ -170,7 +177,6 @@ def main():
     parser.add_argument('--outdir',dest='outdir',help='Name of directory to place garnet output. DEFAULT: none',default=None)
     parser.add_argument('--utilpath',dest='addpath',help='Destination of chipsequtil library, DEFAULT: ../src',default=srcdir)
     parser.add_argument('--allGenes',dest='allgenes',help='Use this flag to use all annotated genes, even if they show no evidence of encoding proteins.',action='store_true',default=False)
-
 
     opts=parser.parse_args()
     
@@ -244,7 +250,7 @@ def main():
     if delim is None:##here we want no delimiter if we do not want to tease out individual tfs
         delim=''
 
-    if do_network is not None and do_network!='' and do_network!='False':
+    if do_network is not None and do_network!='' and do_network.lower()!='false':
         cmd='python '+os.path.join(progdir,'zipTgms.py')+' --pkl='+binding_matrix+' --genome '+genome+' --as-network --tf-delimiter='+delim
         if opts.allgenes:
             cmd=cmd+' --allGenes'
@@ -253,12 +259,17 @@ def main():
         
     pvt=config.get('expressionData','pvalThresh')
     qvt=config.get('expressionData','qvalThresh')
-
+    
+    plot = False
+    plot_str=config.get('regression','savePlot')
+    if plot_str is not None and plot_str != '' and plot_str.lower() != 'false':
+        plot = True
+    
     ##step 4: regression
     if expr is not None and expr!='':
         #print binding_matrix,expr
         if binding_matrix!='' and os.path.exists(binding_matrix) and os.path.exists(expr):
-            keeprunning,tfs=getTfsFromRegression(binding_matrix,expr,pvt,qvt)
+            keeprunning,tfs=getTfsFromRegression(binding_matrix,expr,pvt,qvt,plot)
         else:
             print 'Cannot perform regression because binding matrix or expression datasets are missing'
     if keeprunning!=0:
