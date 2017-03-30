@@ -1,13 +1,17 @@
-import os, sys, pytest, copy
-from numpy import isclose
+import os, sys, copy
 
-# import repo's tests utilities
+# import repo's tests utilities and forest_util
 cur_dir = os.path.dirname(__file__)
 path = os.path.abspath(os.path.join(cur_dir, '..', 'tests'))
 if not path in sys.path:
     sys.path.insert(1, path)
-del path
 import test_util
+
+path = os.path.abspath(os.path.join(cur_dir, '..', 'scripts'))
+if not path in sys.path:
+    sys.path.insert(1, path)
+from forest_util import loadGraph
+del path
 
 # Set arguments used in all forest tests:
 # Define all but the b (beta) parameter here; vary beta for the tests
@@ -58,7 +62,11 @@ class TestGraphSummary:
     '''
     def test_graph_summary_beta(self, msgsteiner):
         '''
-        In p'(v) = beta * p(v) - mu * deg(v), beta = 1 is too small to overcome the hub penalty with mu = 2:
+        Runs forest.py with a fixed network and prize file and three values of
+        beta.  Summarizes the three optimal forests.
+
+        In p'(v) = beta * p(v) - mu * deg(v), beta = 1 is too small to overcome
+        the hub penalty with mu = 2:
           p'(A) = 1*5 - 2*4 = -3
         We expect forest to use the more costly edges BC and CD in its network instead.
         The graph will have 4 nodes and 2 edges.
@@ -74,7 +82,7 @@ class TestGraphSummary:
         beta_sweep = [1, 2, 0.001]
         for beta in beta_sweep:
             params = copy.deepcopy(conf_params)
-            params['b'] = beta_sweep
+            params['b'] = beta
             ### TODO add outpath to forest_opts before running
             ### TODO need to make sure the output files are not overwritten
             # by adding outlabel to run_forest and making the outlabel contain
