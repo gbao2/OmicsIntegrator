@@ -2,6 +2,12 @@
 Utility functions for Forest and network analysis
 '''
 import networkx as nx
+import os, glob
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import networkx as nx
+import os.path
 
 def loadGraph(sifFile):
     '''Parses a .sif file from Forest.
@@ -30,3 +36,30 @@ def loadGraph(sifFile):
             else:
                 G.add_edge(edge[0], edge[2])
     return G
+
+def summaryGraphs(folder):
+    GraphList = []
+    FilenameList = []
+    nodeslist = []
+    edgeslist = []
+    diameterlist = []
+    connectedc= []
+    maxd = []
+
+    path = os.path.realpath(folder)
+
+    for dirpath, dirnames, filenames in os.walk(path):
+        for filename in [f for f in filenames if f.endswith("result_optimalForest.sif")]:
+            filepath = os.path.join(dirpath, filename)
+            graph = loadGraph(filepath)
+            GraphList.append(graph)
+            FilenameList.append(filepath)
+            nodeslist.append(graph.number_of_nodes())
+            edgeslist.append(graph.number_of_edges())
+    
+    
+    s = pd.DataFrame(data = FilenameList, columns=['Filenames'])
+    s['Graph'] = GraphList
+    s['Number of nodes'] = nodeslist
+    s['Number of edges'] = edgeslist
+    return s

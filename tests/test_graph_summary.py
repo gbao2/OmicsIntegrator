@@ -10,7 +10,7 @@ import test_util
 path = os.path.abspath(os.path.join(cur_dir, '..', 'scripts'))
 if not path in sys.path:
     sys.path.insert(1, path)
-from forest_util import loadGraph
+from forest_util import loadGraph, summaryGraphs
 del path
 
 # Set arguments used in all forest tests:
@@ -87,11 +87,33 @@ class TestGraphSummary:
             ### TODO need to make sure the output files are not overwritten
             # by adding outlabel to run_forest and making the outlabel contain
             # beta
+            title = "outputfile_%s" %(beta)
+            if not os.path.exists(title):
+                os.makedirs(title)
             test_util.run_forest(msgsteiner, params, forest_opts)
         
         ### TODO run forest_util.summaryGraphs
+        path = os.path.dirname(os.path.realpath('test_graph_summary.py'))
+        table = forest_util.summaryGraphs(path)
         ### TODO modify path to import forest_util
+        '''
+        Did that at the beginning.
+        '''
         
         ### TODO test that the dataframe for the three graphs contains the expected
         # nodes and edges
+        expected_node = [4,5,0]
+        expected_edge = [2,4,0]
+        table['Expected Number of nodes'] = expected_node
+        table['Expected Number of edges'] = expected_edge
+        test_node = table['Number of nodes'].as_matrix()
+        test_edge = table['Number of nodes'].as_matrix()
+        
+        assert test_node[0] != expected_node[0], "Unexpected or missing nodes in the first generated graph"
+        assert test_node[1] != expected_node[1], "Unexpected or missing nodes in the second generated graph"
+        assert test_node[2] != expected_node[2], "Unexpected or missing nodes in the third generated graph"
+        
+        assert test_edge[0] != expected_edge[0], "Unexpected or missing edges in the first generated graph"
+        assert test_edge[1] != expected_edge[1], "Unexpected or missing edges in the second generated graph"
+        assert test_edge[2] != expected_edge[2], "Unexpected or missing edges in the third generated graph"
         assert True
