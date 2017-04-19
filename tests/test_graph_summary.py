@@ -1,4 +1,4 @@
-import os, sys, copy
+import os, sys, copy, tempfile, shutil
 
 # import repo's tests utilities and forest_util
 cur_dir = os.path.dirname(__file__)
@@ -78,27 +78,24 @@ class TestGraphSummary:
         beta = 0.001 is too small to connect any prizes.
         The graph will have 0 nodes and 0 edges.
         '''
-        ### TODO verify the beta = 0.001 behavior
-        beta_sweep = [1, 2, 0.001]
-        for beta in beta_sweep:
-            params = copy.deepcopy(conf_params)
-            params['b'] = beta
-            ### TODO add outpath to forest_opts before running
-            ### TODO need to make sure the output files are not overwritten
-            # by adding outlabel to run_forest and making the outlabel contain
-            # beta
-            title = "outputfile_%s" %(beta)
-            if not os.path.exists(title):
-                os.makedirs(title)
-            test_util.run_forest(msgsteiner, params, forest_opts)
+        # Create a tmp output directory
+        forest_opts['outpath'] = tempfile.mkdtemp()        
         
-        ### TODO run forest_util.summaryGraphs
-        path = os.path.dirname(os.path.realpath('test_graph_summary.py'))
-        table = summaryGraphs(path)
-        ### TODO modify path to import forest_util
-        '''
-        Did that at the beginning.
-        '''
+        try:
+            ### TODO verify the beta = 0.001 behavior
+            beta_sweep = [1, 2, 0.001]
+            for beta in beta_sweep:
+                params = copy.deepcopy(conf_params)
+                params['b'] = beta
+
+                forest_opts['outlabel'] = "outputfile_%s" % (beta)
+                test_util.run_forest(msgsteiner, params, forest_opts)
+            
+            table = summaryGraphs(forest_opts['outpath'])
+
+        finally:
+            # Remove the temp output directory
+            shutil.rmtree(forest_opts['outpath'])
         
         ### TODO test that the dataframe for the three graphs contains the expected
         # nodes and edges

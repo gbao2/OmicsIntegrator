@@ -85,21 +85,25 @@ def run_forest(msgsteiner, conf_params, forest_opts):
     else:
       # Create a tmp directory for output unless one is provided
       forest_opts['outpath'] = tempfile.mkdtemp()
+
+    # Set a default label if one is not provided
+    if 'outlabel' not in forest_opts:
+        forest_opts['outlabel'] = 'result'
     
     try:
         cur_dir = os.path.dirname(__file__)
         forest_opts['forest'] = os.path.join(cur_dir, '..', 'scripts', 'forest.py')
-        forest_cmd = 'python {forest} --prize={prize} --edge={edge} --conf={conf} --dummyMode={dummyMode} --outpath={outpath} --msgpath={msgpath} --seed={seed}'.format(**forest_opts)
+        forest_cmd = 'python {forest} --prize={prize} --edge={edge} --conf={conf} --dummyMode={dummyMode} --outpath={outpath} --outlabel={outlabel} --msgpath={msgpath} --seed={seed}'.format(**forest_opts)
         subprocess.call(shlex.split(forest_cmd), shell=False)	
 
         # Test the optimal Forest to see if parameter value has the intended effect
-        opt_forest = os.path.join(forest_opts['outpath'], 'result_optimalForest.sif')
+        opt_forest = os.path.join(forest_opts['outpath'], '{}_optimalForest.sif'.format(forest_opts['outlabel']))
         assert os.path.isfile(opt_forest), 'Forest did not generate the optimal forest file'
         graph = loadGraph(opt_forest)
         
         # Parse the objective function value of the optimal forest
         # This cannot be recovered from the forest file because it depends on w
-        info_filename = os.path.join(forest_opts['outpath'], 'result_info.txt')
+        info_filename = os.path.join(forest_opts['outpath'], '{}_info.txt'.format(forest_opts['outlabel']))
         assert os.path.isfile(info_filename), 'Forest did not generate the info file'
         objective = parse_obj(info_filename)
         
