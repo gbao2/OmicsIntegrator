@@ -10,7 +10,7 @@ import test_util
 path = os.path.abspath(os.path.join(cur_dir, '..', 'scripts'))
 if not path in sys.path:
     sys.path.insert(1, path)
-from forest_util import loadGraph, summaryGraphs
+from forest_util import summaryGraphs
 del path
 
 # Set arguments used in all forest tests:
@@ -94,7 +94,7 @@ class TestGraphSummary:
         
         ### TODO run forest_util.summaryGraphs
         path = os.path.dirname(os.path.realpath('test_graph_summary.py'))
-        table = forest_util.summaryGraphs(path)
+        table = summaryGraphs(path)
         ### TODO modify path to import forest_util
         '''
         Did that at the beginning.
