@@ -15,7 +15,7 @@ with open('README.md') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read().replace('.. :changelog:', '')
 
-requirements = ["networkx","scipy","numpy","matplotlib"]
+requirements = ["networkx","scipy","numpy","matplotlib","pandas"]
 
 test_requirements = ['pytest']
 

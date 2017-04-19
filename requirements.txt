@@ -3,3 +3,4 @@ networkx>=1.4
 numpy>=1.6
 scipy>=0.9.0
 matplotlib>=1.0
+pandas>0.18
