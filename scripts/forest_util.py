@@ -56,10 +56,23 @@ def summaryGraphs(folder):
             FilenameList.append(filepath)
             nodeslist.append(graph.number_of_nodes())
             edgeslist.append(graph.number_of_edges())
+            diameterlist.append(nx.diameter(graph))
+            isDirected = nx.is_directed(graph)
+            if (isDirected):
+                connectedc.append(np.nan)
+            else:
+                connectedc.append(nx.number_connected_components(graph))
+            degree = graph.degree()
+            maximum = max(degree, key=degree.get)
+            maxd.append(degree[maximum])
     
     
     s = pd.DataFrame(data = FilenameList, columns=['Filenames'])
     s['Graph'] = GraphList
     s['Number of nodes'] = nodeslist
     s['Number of edges'] = edgeslist
+    s['Diameter'] = diameterlist
+    s['Number of connected components'] = connectedc
+    s['Maximum degree (max over all node degrees)'] = maxd
+    s.to_csv('info.txt', path = os.path.realpath(folder), sep='\t', index=False)
     return s
